@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Gavin's ToDo List</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: transparent;
+      margin: 0;
+      padding: 20px;
+      background-image: url('Navy Blue Fade Background.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      height: 100vh;
+    }
+
+    .container {
+      display: flex;
+      gap: 30px;
+      max-width: 1200px;
+      margin: auto;
+      min-height: 80vh;
+    }
+
+    .left-panel {
+      width: 280px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .left-panel h2 {
+      text-align: center;
+      color: #333333; 
+      background: transparent;
+    }
+
+    .input-area input,
+    .input-area button {
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+
+    .input-area button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    .main-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .task-section {
+      background: rgba(255, 255, 255, 0.1); 
+      padding: 20px;
+      border-radius: 10px;
+      backdrop-filter: blur(10px); 
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #333333; 
+    }
+
+    .task-section h3 {
+      text-align: center;
+      margin-top: 0;
+      color: #333333;
+      background: transparent; 
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    li {
+     
+      background: rgba(255,255,255,0.2); 
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 6px;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      color: #333; 
+    }
+
+    .task-info {
+      flex: 1;
+    }
+
+    .task-text {
+      font-weight: bold;
+    }
+
+    .timestamp, .timer {
+      font-size: 12px;
+      color: #555; 
+    }
+
+    .timer.warning {
+      color: #ff4d4d;
+      font-weight: bold;
+    }
+
+    .btn-group button {
+      margin-left: 5px;
+      padding: 5px 10px;
+      font-size: 12px;
+      border: none;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+    }
+
+    .complete-btn { background: #3498db; }
+    .delete-btn { background: #e74c3c; }
+    .edit-btn { background: #f39c12; }
+
+    input::placeholder {
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+
+<audio id="beep" src="alarm-327234.mp3" preload="auto"></audio>
+
+<div class="container">
+
+  <div class="left-panel">
+    <h2>ToDoList</h2>
+    <div class="input-area">
+      <input type="text" id="taskInput" placeholder="Task name">
+      <input type="datetime-local" id="deadlineInput">
+      <button onclick="addTask()">Add Task</button>
+    </div>
+  </div>
+
+  <div class="main-panel">
+    <div class="task-section">
+      <h3>Today's Tasks</h3>
+      <ul id="todayTasks"></ul>
+    </div>
+    <div class="task-section">
+      <h3>Upcoming Tasks</h3>
+      <ul id="upcomingTasks"></ul>
+    </div>
+    <div class="task-section">
+      <h3>Overdue Tasks</h3>
+      <ul id="overdueTasks"></ul>
+    </div>
+    <div class="task-section" id="completedSection" style="display:none;">
+      <h3>Completed Tasks</h3>
+      <ul id="completedTasks"></ul>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const taskInput = document.getElementById("taskInput");
+  const deadlineInput = document.getElementById("deadlineInput");
+  const todayList = document.getElementById("todayTasks");
+  const upcomingList = document.getElementById("upcomingTasks");
+  const overdueList = document.getElementById("overdueTasks");
+  const completedList = document.getElementById("completedTasks");
+  const completedSection = document.getElementById("completedSection");
+  const beep = document.getElementById("beep");
+
+  function formatTime(ms) {
+    if (ms <= 0) return "Time's up!";
+    const sec = Math.floor(ms / 1000);
+    const d = Math.floor(sec / 86400);
+    const h = Math.floor((sec % 86400) / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    return `${d}d ${h}h ${m}m ${s}s`;
+  }
+
+  function isToday(date) {
+    const now = new Date();
+    return date.getFullYear() === now.getFullYear() &&
+           date.getMonth() === now.getMonth() &&
+           date.getDate() === now.getDate();
+  }
+
+  function addTask() {
+    const text = taskInput.value.trim();
+    const deadline = deadlineInput.value;
+
+    if (!text || !deadline) return;
+
+    const taskEl = createTaskElement(text, new Date(deadline));
+    placeTask(taskEl, new Date(deadline));
+
+    taskInput.value = "";
+    deadlineInput.value = "";
+  }
+
+  function placeTask(taskEl, deadline) {
+    if (deadline < new Date()) {
+      overdueList.appendChild(taskEl);
+    } else if (isToday(deadline)) {
+      todayList.appendChild(taskEl);
+    } else {
+      upcomingList.appendChild(taskEl);
+    }
+  }
+
+  function createTaskElement(text, deadline) {
+    const li = document.createElement("li");
+
+    const taskInfo = document.createElement("div");
+    taskInfo.className = "task-info";
+
+    const taskText = document.createElement("div");
+    taskText.className = "task-text";
+    taskText.textContent = text;
+
+    const timestamp = document.createElement("div");
+    timestamp.className = "timestamp";
+    timestamp.textContent = "Created: " + new Date().toLocaleString();
+
+    const timer = document.createElement("div");
+    timer.className = "timer";
+
+    taskInfo.appendChild(taskText);
+    taskInfo.appendChild(timestamp);
+    taskInfo.appendChild(timer);
+
+    const btnGroup = document.createElement("div");
+    btnGroup.className = "btn-group";
+
+    const completeBtn = document.createElement("button");
+    completeBtn.textContent = "Complete";
+    completeBtn.className = "complete-btn";
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.textContent = "Delete";
+    deleteBtn.className = "delete-btn";
+
+    const editBtn = document.createElement("button");
+    editBtn.textContent = "Edit";
+    editBtn.className = "edit-btn";
+
+    btnGroup.appendChild(editBtn);
+    btnGroup.appendChild(completeBtn);
+    btnGroup.appendChild(deleteBtn);
+
+    li.appendChild(taskInfo);
+    li.appendChild(btnGroup);
+
+    let interval = setInterval(() => {
+      const now = new Date();
+      const diff = deadline - now;
+      if (diff <= 0) {
+        timer.textContent = "Time's up!";
+        timer.classList.add("warning");
+        clearInterval(interval);
+        beep.play();
+        if (!li.classList.contains("completed")) {
+          overdueList.appendChild(li);
+        }
+      } else {
+        timer.textContent = "Time left: " + formatTime(diff);
+        if (diff <= 60000) timer.classList.add("warning");
+      }
+    }, 1000);
+
+    completeBtn.onclick = () => {
+      li.classList.add("completed");
+      completeBtn.remove();
+      editBtn.remove();
+      completedList.appendChild(li);
+      completedSection.style.display = "block";
+      clearInterval(interval);
+    };
+
+    deleteBtn.onclick = () => {
+      li.remove();
+      clearInterval(interval);
+    };
+
+    editBtn.onclick = () => {
+      const newText = prompt("Edit task text:", text);
+      const newDeadline = prompt("Edit deadline (YYYY-MM-DDTHH:MM):", deadline.toISOString().slice(0, 16));
+      if (newText && newDeadline) {
+        taskText.textContent = newText;
+        deadline = new Date(newDeadline);
+        clearInterval(interval);
+        placeTask(li, deadline);
+        interval = setInterval(() => {
+          const now = new Date();
+          const diff = deadline - now;
+          if (diff <= 0) {
+            timer.textContent = "Time's up!";
+            timer.classList.add("warning");
+            clearInterval(interval);
+            beep.play();
+            if (!li.classList.contains("completed")) {
+              overdueList.appendChild(li);
+            }
+          } else {
+            timer.textContent = "Time left: " + formatTime(diff);
+            if (diff <= 60000) timer.classList.add("warning");
+          }
+        }, 1000);
+      }
+    };
+
+    return li;
+  }
+</script>
+
+</body>
+</html>
